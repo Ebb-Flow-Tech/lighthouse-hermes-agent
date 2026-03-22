@@ -166,7 +166,14 @@ class LarkAdapter(BasePlatformAdapter):
         return SendResult(success=True, message_id=msg_id)
 
     async def send_typing(self, chat_id: str, metadata=None) -> None:
-        """Send a thinking card and store message_id for later update."""
+        """Send a thinking card once and store message_id for later update.
+
+        The base class calls this repeatedly via _keep_typing (every 2s).
+        On Lark we only send the thinking card once — subsequent calls are no-ops
+        because the card stays visible until we update it in-place.
+        """
+        if chat_id in self._thinking_messages:
+            return  # Already showing a thinking card for this chat
         card = build_thinking_card()
         msg_id = await self._send_card(chat_id, card)
         self._thinking_messages[chat_id] = msg_id
@@ -428,7 +435,6 @@ class LarkAdapter(BasePlatformAdapter):
         """Process a message in the background with concurrency tracking."""
         self._active_calls += 1
         try:
-            await self.send_typing(chat_id)
             await self.handle_message(event)
         except Exception as e:
             logger.error("Lark message processing error: %s", e)
