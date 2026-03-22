@@ -13,7 +13,7 @@ primary_region = "sin"
   force_https = true
   auto_stop_machines = false
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
 
 # TCP health check — the Lark webhook aiohttp server listens on port 4000
 # but has no dedicated /health endpoint, so we use a connection-level check.

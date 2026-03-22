@@ -31,4 +31,7 @@ ENV LARK_WEBHOOK_PORT=4000
 
 EXPOSE 4000
 
-CMD ["hermes", "gateway"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
