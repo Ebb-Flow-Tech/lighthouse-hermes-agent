@@ -125,6 +125,7 @@ def _handle_send(args):
         "whatsapp": Platform.WHATSAPP,
         "signal": Platform.SIGNAL,
         "email": Platform.EMAIL,
+        "lark": Platform.LARK,
     }
     platform = platform_map.get(platform_name)
     if not platform:
@@ -297,6 +298,8 @@ async def _send_to_platform(platform, pconfig, chat_id, message, thread_id=None,
         result = await _send_signal(pconfig.extra, chat_id, message)
     elif platform == Platform.EMAIL:
         result = await _send_email(pconfig.extra, chat_id, message)
+    elif platform == Platform.LARK:
+        result = await _send_lark(pconfig.extra, chat_id, message)
     else:
         result = {"error": f"Direct sending not yet implemented for {platform.value}"}
 
@@ -489,6 +492,59 @@ async def _send_email(extra, chat_id, message):
         return {"success": True, "platform": "email", "chat_id": chat_id}
     except Exception as e:
         return {"error": f"Email send failed: {e}"}
+
+
+async def _send_lark(extra, chat_id, message):
+    """Send via Lark/Feishu Bot API (one-shot, no polling needed)."""
+    try:
+        import httpx
+    except ImportError:
+        return {"error": "httpx not installed. Run: pip install httpx"}
+    try:
+        app_id = (extra or {}).get("app_id") or os.getenv("LARK_APP_ID", "")
+        app_secret = (extra or {}).get("app_secret") or os.getenv("LARK_APP_SECRET", "")
+        if not app_id or not app_secret:
+            return {"error": "Lark not configured (LARK_APP_ID and LARK_APP_SECRET required)"}
+
+        # Get tenant access token
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            token_resp = await client.post(
+                "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+                json={"app_id": app_id, "app_secret": app_secret},
+            )
+            token_resp.raise_for_status()
+            token_data = token_resp.json()
+            if token_data.get("code") != 0:
+                return {"error": f"Lark auth failed: {token_data.get('msg', 'unknown error')}"}
+            tenant_token = token_data["tenant_access_token"]
+
+            # Send message
+            headers = {"Authorization": f"Bearer {tenant_token}"}
+            # Determine receive_id_type based on chat_id prefix
+            if chat_id.startswith("oc_"):
+                receive_id_type = "chat_id"
+            elif chat_id.startswith("ou_"):
+                receive_id_type = "open_id"
+            else:
+                receive_id_type = "chat_id"
+
+            send_resp = await client.post(
+                f"https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type={receive_id_type}",
+                headers=headers,
+                json={
+                    "receive_id": chat_id,
+                    "msg_type": "text",
+                    "content": json.dumps({"text": message}),
+                },
+            )
+            send_resp.raise_for_status()
+            send_data = send_resp.json()
+            if send_data.get("code") != 0:
+                return {"error": f"Lark send failed: {send_data.get('msg', 'unknown error')}"}
+            msg_id = send_data.get("data", {}).get("message_id", "")
+            return {"success": True, "platform": "lark", "chat_id": chat_id, "message_id": msg_id}
+    except Exception as e:
+        return {"error": f"Lark send failed: {e}"}
 
 
 def _check_send_message():

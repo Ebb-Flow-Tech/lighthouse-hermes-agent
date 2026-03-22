@@ -42,6 +42,7 @@ class Platform(Enum):
     SIGNAL = "signal"
     HOMEASSISTANT = "homeassistant"
     EMAIL = "email"
+    LARK = "lark"
 
 
 @dataclass
@@ -230,6 +231,9 @@ class GatewayConfig:
                 connected.append(platform)
             # Email uses extra dict for config (address + imap_host + smtp_host)
             elif platform == Platform.EMAIL and config.extra.get("address"):
+                connected.append(platform)
+            # Lark uses extra dict for config (app_id + app_secret)
+            elif platform == Platform.LARK and config.extra.get("app_id"):
                 connected.append(platform)
         return connected
     
@@ -561,6 +565,26 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
                 platform=Platform.EMAIL,
                 chat_id=email_home,
                 name=os.getenv("EMAIL_HOME_ADDRESS_NAME", "Home"),
+            )
+
+    # Lark
+    lark_app_id = os.getenv("LARK_APP_ID")
+    if lark_app_id:
+        if Platform.LARK not in config.platforms:
+            config.platforms[Platform.LARK] = PlatformConfig()
+        config.platforms[Platform.LARK].enabled = True
+        config.platforms[Platform.LARK].extra.update({
+            "app_id": lark_app_id,
+            "app_secret": os.getenv("LARK_APP_SECRET", ""),
+            "verification_token": os.getenv("LARK_VERIFICATION_TOKEN", ""),
+            "encrypt_key": os.getenv("LARK_ENCRYPT_KEY", ""),
+        })
+        lark_home = os.getenv("LARK_HOME_CHANNEL")
+        if lark_home:
+            config.platforms[Platform.LARK].home_channel = HomeChannel(
+                platform=Platform.LARK,
+                chat_id=lark_home,
+                name=os.getenv("LARK_HOME_CHANNEL_NAME", "Home"),
             )
 
     # Session settings

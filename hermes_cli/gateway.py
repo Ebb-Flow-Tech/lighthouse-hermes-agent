@@ -1006,6 +1006,35 @@ _PLATFORMS = [
              "help": "Only emails from these addresses will be processed."},
         ],
     },
+    {
+        "key": "lark",
+        "label": "Lark",
+        "emoji": "🐦",
+        "token_var": "LARK_APP_ID",
+        "setup_instructions": [
+            "1. Go to https://open.feishu.cn/app → Create Custom App",
+            "2. Under Credentials, copy the App ID and App Secret",
+            "3. Add bot capability: Features → Bot → Enable",
+            "4. Set Event Subscription URL to your gateway's /lark/events endpoint",
+            "5. Subscribe to events: im.message.receive_v1",
+            "6. Under Permissions, add: im:message, im:message:send_as_bot, im:chat:readonly",
+            "7. Publish the app version and approve in admin console",
+            "8. To find a chat ID: add the bot to a group and check the event payload for chat_id (oc_xxxxx)",
+        ],
+        "vars": [
+            {"name": "LARK_APP_ID", "prompt": "App ID", "password": False,
+             "help": "Paste the App ID from step 2 above."},
+            {"name": "LARK_APP_SECRET", "prompt": "App Secret", "password": True,
+             "help": "Paste the App Secret from step 2 above."},
+            {"name": "LARK_VERIFICATION_TOKEN", "prompt": "Verification Token (for event subscription)", "password": True,
+             "help": "Found under Event Subscription in the Lark app console."},
+            {"name": "LARK_ALLOWED_USERS", "prompt": "Allowed user open IDs (comma-separated, ou_xxxxx)", "password": False,
+             "is_allowlist": True,
+             "help": "Paste open IDs of users allowed to interact with the bot."},
+            {"name": "LARK_HOME_CHANNEL", "prompt": "Home channel chat ID (oc_xxxxx, for cron/notification delivery, or empty)", "password": False,
+             "help": "The default chat for cron job delivery. You can set it later with /set-home."},
+        ],
+    },
 ]
 
 

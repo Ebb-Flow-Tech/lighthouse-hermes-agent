@@ -81,6 +81,9 @@ _DB_CONNSTR_RE = re.compile(
 # Negative lookahead prevents matching hex strings or identifiers
 _SIGNAL_PHONE_RE = re.compile(r"(\+[1-9]\d{6,14})(?![A-Za-z0-9])")
 
+# Lark open IDs (ou_xxxxx) and chat IDs (oc_xxxxx) — 20+ alphanumeric chars
+_LARK_ID_RE = re.compile(r"(ou_|oc_)[a-zA-Z0-9]{20,}")
+
 # Compile known prefix patterns into one alternation
 _PREFIX_RE = re.compile(
     r"(?<![A-Za-z0-9_-])(" + "|".join(_PREFIX_PATTERNS) + r")(?![A-Za-z0-9_-])"
@@ -146,6 +149,9 @@ def redact_sensitive_text(text: str) -> str:
             return phone[:2] + "****" + phone[-2:]
         return phone[:4] + "****" + phone[-4:]
     text = _SIGNAL_PHONE_RE.sub(_redact_phone, text)
+
+    # Lark open IDs and chat IDs (ou_xxxxx, oc_xxxxx)
+    text = _LARK_ID_RE.sub(lambda m: f"{m.group(1)}***", text)
 
     return text
 

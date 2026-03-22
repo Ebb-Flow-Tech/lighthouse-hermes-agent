@@ -1,0 +1,132 @@
+# lighthouse-config.yaml
+# Hermes-agent configuration for Lighthouse deployment
+#
+# Usage: copy to cli-config.yaml or pass via --config lighthouse-config.yaml
+
+# =============================================================================
+# Model Configuration
+# =============================================================================
+model:
+  default: "anthropic/claude-sonnet-4-20250514"
+  provider: "auto"
+
+# =============================================================================
+# MCP Servers
+# =============================================================================
+# Connects to the Lighthouse backend MCP endpoint for data tools
+# (report execution, dashboard queries, connection management, etc.)
+mcp_servers:
+  lighthouse:
+    url: http://lighthouse-backend-api.internal:3000/mcp
+    headers:
+      Authorization: "Bearer ${MCP_AUTH_TOKEN}"
+    timeout: 120
+    connect_timeout: 60
+
+# =============================================================================
+# Terminal Configuration
+# =============================================================================
+terminal:
+  backend: "local"
+  cwd: "."
+  timeout: 180
+  lifetime_seconds: 300
+
+# =============================================================================
+# Agent Behavior
+# =============================================================================
+agent:
+  max_turns: 60
+  verbose: false
+  reasoning_effort: "medium"
+
+# =============================================================================
+# Persistent Memory
+# =============================================================================
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+  nudge_interval: 10
+  flush_min_turns: 6
+
+# =============================================================================
+# Session Reset Policy (Messaging Platforms)
+# =============================================================================
+session_reset:
+  mode: both
+  idle_minutes: 1440
+  at_hour: 4
+
+# Group chats: one session per user (secure default)
+group_sessions_per_user: true
+
+# =============================================================================
+# Context Compression
+# =============================================================================
+compression:
+  enabled: true
+  threshold: 0.85
+  summary_model: "google/gemini-3-flash-preview"
+
+# =============================================================================
+# Toolsets
+# =============================================================================
+toolsets:
+  - all
+
+# =============================================================================
+# Platform Toolsets
+# =============================================================================
+platform_toolsets:
+  cli: [hermes-cli]
+  telegram: [hermes-telegram]
+  whatsapp: [hermes-whatsapp]
+  slack: [hermes-slack]
+  lark: [hermes-telegram]
+
+# =============================================================================
+# Gateway Streaming
+# =============================================================================
+streaming:
+  enabled: false
+
+# =============================================================================
+# Voice Transcription
+# =============================================================================
+stt:
+  enabled: true
+  model: "whisper-1"
+
+# =============================================================================
+# Skills Configuration
+# =============================================================================
+skills:
+  creation_nudge_interval: 15
+
+# =============================================================================
+# Code Execution Sandbox
+# =============================================================================
+code_execution:
+  timeout: 300
+  max_tool_calls: 50
+
+# =============================================================================
+# Subagent Delegation
+# =============================================================================
+delegation:
+  max_iterations: 50
+  default_toolsets: ["terminal", "file", "web"]
+
+# =============================================================================
+# Display
+# =============================================================================
+display:
+  compact: false
+  tool_progress: all
+  background_process_notifications: all
+  bell_on_complete: false
+  show_reasoning: false
+  streaming: false
+  skin: default

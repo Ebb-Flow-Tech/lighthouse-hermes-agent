@@ -1,0 +1,29 @@
+# fly.toml — Fly.io deployment config for Lighthouse Agent (Hermes gateway)
+app = "lighthouse-hermes"
+primary_region = "sin"
+
+[build]
+
+# [mounts]
+#   source = "hermes_data"
+#   destination = "/root/.hermes/data"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+# TCP health check — the Lark webhook aiohttp server listens on port 4000
+# but has no dedicated /health endpoint, so we use a connection-level check.
+[checks.health]
+  port = 4000
+  type = "tcp"
+  interval = "30s"
+  timeout = "5s"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

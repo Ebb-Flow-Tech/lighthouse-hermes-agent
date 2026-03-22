@@ -841,7 +841,7 @@ class GatewayRunner:
             os.getenv(v)
             for v in ("TELEGRAM_ALLOWED_USERS", "DISCORD_ALLOWED_USERS",
                        "WHATSAPP_ALLOWED_USERS", "SLACK_ALLOWED_USERS",
-                       "GATEWAY_ALLOWED_USERS")
+                       "LARK_ALLOWED_USERS", "GATEWAY_ALLOWED_USERS")
         )
         _allow_all = os.getenv("GATEWAY_ALLOW_ALL_USERS", "").lower() in ("true", "1", "yes")
         if not _any_allowlist and not _allow_all:
@@ -1125,6 +1125,13 @@ class GatewayRunner:
                 return None
             return EmailAdapter(config)
 
+        elif platform == Platform.LARK:
+            from gateway.platforms.lark import LarkAdapter, check_lark_requirements
+            if not check_lark_requirements():
+                logger.warning("Lark dependencies not installed")
+                return None
+            return LarkAdapter(config)
+
         return None
     
     def _is_user_authorized(self, source: SessionSource) -> bool:
@@ -1155,6 +1162,7 @@ class GatewayRunner:
             Platform.SLACK: "SLACK_ALLOWED_USERS",
             Platform.SIGNAL: "SIGNAL_ALLOWED_USERS",
             Platform.EMAIL: "EMAIL_ALLOWED_USERS",
+            Platform.LARK: "LARK_ALLOWED_USERS",
         }
         platform_allow_all_map = {
             Platform.TELEGRAM: "TELEGRAM_ALLOW_ALL_USERS",
@@ -1163,6 +1171,7 @@ class GatewayRunner:
             Platform.SLACK: "SLACK_ALLOW_ALL_USERS",
             Platform.SIGNAL: "SIGNAL_ALLOW_ALL_USERS",
             Platform.EMAIL: "EMAIL_ALLOW_ALL_USERS",
+            Platform.LARK: "LARK_ALLOW_ALL_USERS",
         }
 
         # Per-platform allow-all flag (e.g., DISCORD_ALLOW_ALL_USERS=true)
@@ -2925,6 +2934,7 @@ class GatewayRunner:
                 Platform.SIGNAL: "hermes-signal",
                 Platform.HOMEASSISTANT: "hermes-homeassistant",
                 Platform.EMAIL: "hermes-email",
+                Platform.LARK: "hermes-lark",
             }
             platform_toolsets_config = {}
             try:
@@ -2946,6 +2956,7 @@ class GatewayRunner:
                 Platform.SIGNAL: "signal",
                 Platform.HOMEASSISTANT: "homeassistant",
                 Platform.EMAIL: "email",
+                Platform.LARK: "lark",
             }.get(source.platform, "telegram")
 
             config_toolsets = platform_toolsets_config.get(platform_config_key)
@@ -3940,6 +3951,7 @@ class GatewayRunner:
             Platform.SIGNAL: "hermes-signal",
             Platform.HOMEASSISTANT: "hermes-homeassistant",
             Platform.EMAIL: "hermes-email",
+            Platform.LARK: "hermes-lark",
         }
 
         # Try to load platform_toolsets from config
@@ -3964,6 +3976,7 @@ class GatewayRunner:
             Platform.SIGNAL: "signal",
             Platform.HOMEASSISTANT: "homeassistant",
             Platform.EMAIL: "email",
+            Platform.LARK: "lark",
         }.get(source.platform, "telegram")
         
         # Use config override if present (list of toolsets), otherwise hardcoded default
@@ -4745,9 +4758,51 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
         name="cron-ticker",
     )
     cron_thread.start()
-    
+
+    # Start webhook HTTP server for Lark (if the adapter is active)
+    webhook_runner = None
+    lark_adapter = runner.adapters.get(Platform.LARK)
+    if lark_adapter is not None:
+        try:
+            from aiohttp import web as _web
+
+            async def _lark_webhook_handler(request: _web.Request) -> _web.Response:
+                raw_body = await request.text()
+                headers = {k.lower(): v for k, v in request.headers.items()}
+                result = await lark_adapter.handle_webhook(raw_body, headers)
+                return _web.json_response(result)
+
+            async def _lark_card_action_handler(request: _web.Request) -> _web.Response:
+                body = await request.json()
+                result = await lark_adapter.handle_card_action(body)
+                return _web.json_response(result)
+
+            app = _web.Application()
+            app.router.add_post("/webhook/lark", _lark_webhook_handler)
+            app.router.add_post("/webhook/lark/card", _lark_card_action_handler)
+
+            webhook_runner = _web.AppRunner(app)
+            await webhook_runner.setup()
+            webhook_port = int(os.getenv("LARK_WEBHOOK_PORT", "9800"))
+            site = _web.TCPSite(webhook_runner, "0.0.0.0", webhook_port)
+            await site.start()
+            logger.info("Lark webhook server listening on port %d", webhook_port)
+        except ImportError:
+            logger.warning(
+                "aiohttp not installed — Lark webhook server disabled. "
+                "Run: pip install aiohttp"
+            )
+            webhook_runner = None
+        except Exception as e:
+            logger.error("Failed to start Lark webhook server: %s", e)
+            webhook_runner = None
+
     # Wait for shutdown
     await runner.wait_for_shutdown()
+
+    # Stop Lark webhook server
+    if webhook_runner is not None:
+        await webhook_runner.cleanup()
     
     # Stop cron ticker cleanly
     cron_stop.set()

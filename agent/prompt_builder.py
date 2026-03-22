@@ -157,6 +157,16 @@ PLATFORM_HINTS = {
         "the scheduled destination, put it directly in your final response. Use "
         "send_message only for additional or different targets."
     ),
+    "lark": (
+        "You are on Lark, a team collaboration platform. "
+        "Lark supports Interactive Message Cards with rich formatting: "
+        "markdown text blocks with full formatting, column-based table layouts "
+        "(max 20 rows displayed), image blocks (images must be uploaded to Lark "
+        "first), action buttons with callbacks, and cards can be updated in-place "
+        "after sending. Format tabular data as markdown tables. Charts will be "
+        "rendered as images. When presenting query results, always use markdown "
+        "table format with | delimiters."
+    ),
     "cli": (
         "You are a CLI AI Agent. Try not to use markdown but simple text "
         "renderable inside a terminal."
