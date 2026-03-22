@@ -991,12 +991,22 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
                     )
                 })
 
-            # Collect text from content blocks
+            # Collect text and image content blocks
             parts: List[str] = []
+            images: List[dict] = []
             for block in (result.content or []):
                 if hasattr(block, "text"):
                     parts.append(block.text)
-            return json.dumps({"result": "\n".join(parts) if parts else ""})
+                elif hasattr(block, "data") and hasattr(block, "mimeType"):
+                    images.append({
+                        "base64": block.data,
+                        "mimeType": getattr(block, "mimeType", "image/png"),
+                    })
+
+            result_obj: dict = {"result": "\n".join(parts) if parts else ""}
+            if images:
+                result_obj["images"] = images
+            return json.dumps(result_obj)
 
         try:
             return _run_on_mcp_loop(_call(), timeout=tool_timeout)
