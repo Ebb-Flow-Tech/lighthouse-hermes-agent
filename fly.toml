@@ -4,9 +4,11 @@ primary_region = "sin"
 
 [build]
 
-# [mounts]
-#   source = "hermes_data"
-#   destination = "/root/.hermes/data"
+# Persistent volume for WhatsApp Baileys session credentials.
+# Create with: fly volumes create hermes_whatsapp --region sin --size 1
+[mounts]
+  source = "hermes_whatsapp"
+  destination = "/root/.hermes/whatsapp"
 
 [http_service]
   internal_port = 4000
@@ -24,6 +26,6 @@ primary_region = "sin"
   timeout = "5s"
 
 [[vm]]
-  memory = "512mb"
+  memory = "1024mb"
   cpu_kind = "shared"
   cpus = 1

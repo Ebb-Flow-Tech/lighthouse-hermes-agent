@@ -53,3 +53,7 @@ environments/benchmarks/evals/
 
 # Release script temp files
 .release_notes.md
+
+# WhatsApp bridge session credentials (contains auth keys)
+scripts/whatsapp-bridge/session/
+scripts/whatsapp-bridge/session.tar.gz

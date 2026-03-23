@@ -3,10 +3,22 @@ FROM python:3.11-slim
 # Install uv for fast dependency management
 RUN pip install uv
 
-# Install system deps needed by cryptography (Lark adapter) and aiohttp
+# Install system deps:
+#   build-essential, libffi-dev — needed by cryptography (Lark adapter) and aiohttp
+#   psmisc — provides fuser, used by WhatsApp adapter to kill orphaned bridge processes
+#   ca-certificates, curl, gnupg — needed for NodeSource APT repo setup
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
+    psmisc \
+    ca-certificates \
+    curl \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20 LTS (required for WhatsApp Baileys bridge)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -14,10 +26,12 @@ WORKDIR /app
 # Copy project files
 COPY . .
 
-# Install dependencies needed for Lighthouse (Lark + MCP + cron)
-# Use [all] if you need every optional extra; [lark,mcp,cron] is sufficient
-# for the Lighthouse gateway deployment.
-RUN uv pip install --system -e ".[lark,mcp,cron]"
+# Install WhatsApp bridge npm dependencies at build time
+# (The adapter has a runtime fallback, but pre-installing is faster and deterministic)
+RUN cd scripts/whatsapp-bridge && npm install --production && cd ../..
+
+# Install dependencies needed for Lighthouse (Lark + MCP + cron + aiohttp for WhatsApp)
+RUN uv pip install --system -e ".[lark,mcp,cron]" aiohttp>=3.9.0
 
 # Copy config to hermes data directory
 RUN mkdir -p /root/.hermes && cp lighthouse-config.yaml /root/.hermes/config.yaml

@@ -8,6 +8,7 @@
     "start": "node bridge.js"
   },
   "dependencies": {
+    "@hapi/boom": "^10.0.0",
     "@whiskeysockets/baileys": "7.0.0-rc.9",
     "express": "^4.21.0",
     "qrcode-terminal": "^0.12.0",

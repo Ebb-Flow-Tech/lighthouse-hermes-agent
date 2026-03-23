@@ -1,11 +1,15 @@
 """Tests for gateway configuration management."""
 
+import os
+from unittest.mock import patch
+
 from gateway.config import (
     GatewayConfig,
     HomeChannel,
     Platform,
     PlatformConfig,
     SessionResetPolicy,
+    _apply_env_overrides,
     load_gateway_config,
 )
 
@@ -158,3 +162,38 @@ class TestLoadGatewayConfig:
         config = load_gateway_config()
 
         assert config.quick_commands == {}
+
+
+class TestWhatsAppHomeChannel:
+    @patch.dict(os.environ, {
+        "WHATSAPP_ENABLED": "true",
+        "WHATSAPP_HOME_CHANNEL": "120363001234567890@g.us",
+    }, clear=False)
+    def test_whatsapp_home_channel_loaded(self):
+        config = GatewayConfig()
+        _apply_env_overrides(config)
+        assert Platform.WHATSAPP in config.platforms
+        home = config.platforms[Platform.WHATSAPP].home_channel
+        assert home is not None
+        assert home.chat_id == "120363001234567890@g.us"
+        assert home.name == "Home"
+
+    @patch.dict(os.environ, {
+        "WHATSAPP_ENABLED": "true",
+        "WHATSAPP_HOME_CHANNEL": "120363001234567890@g.us",
+        "WHATSAPP_HOME_CHANNEL_NAME": "Support",
+    }, clear=False)
+    def test_whatsapp_home_channel_custom_name(self):
+        config = GatewayConfig()
+        _apply_env_overrides(config)
+        home = config.platforms[Platform.WHATSAPP].home_channel
+        assert home.name == "Support"
+
+    @patch.dict(os.environ, {
+        "WHATSAPP_HOME_CHANNEL": "120363001234567890@g.us",
+        "WHATSAPP_ENABLED": "",
+    }, clear=False)
+    def test_whatsapp_home_channel_ignored_without_enabled(self):
+        config = GatewayConfig()
+        _apply_env_overrides(config)
+        assert Platform.WHATSAPP not in config.platforms
