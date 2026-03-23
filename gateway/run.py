@@ -1875,6 +1875,17 @@ class GatewayRunner:
             response = agent_result.get("final_response") or ""
             agent_messages = agent_result.get("messages", [])
 
+            # Inject chart image URLs from tool results if the LLM omitted them.
+            _cp = re.compile(r'!\[.*?\]\((https?://\S+?\.png)\)')
+            if response and not _cp.search(response):
+                for msg in agent_messages:
+                    if msg.get("role") in ("tool", "function"):
+                        content = msg.get("content", "")
+                        for _m in _cp.finditer(content):
+                            if _m.group(1) not in response:
+                                response += f"\n\n![Chart]({_m.group(1)})"
+                                logger.info("Injected chart URL into response: %s", _m.group(1)[:80])
+
             # Surface error details when the agent failed silently (final_response=None)
             if not response and agent_result.get("failed"):
                 error_detail = agent_result.get("error", "unknown error")
