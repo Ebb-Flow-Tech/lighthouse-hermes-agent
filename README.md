@@ -15,6 +15,77 @@
 
 Use any model you want — [Nous Portal](https://portal.nousresearch.com), [OpenRouter](https://openrouter.ai) (200+ models), [z.ai/GLM](https://z.ai), [Kimi/Moonshot](https://platform.moonshot.ai), [MiniMax](https://www.minimax.io), OpenAI, or your own endpoint. Switch with `hermes model` — no code changes, no lock-in.
 
+## Lighthouse Deployment
+
+This fork is configured as a **Lighthouse Agent** — an AI-powered data analytics assistant that connects to the [Lighthouse](https://lighthouse.com) BI platform via MCP. Users interact through **Lark (Feishu)** to explore business data with natural language.
+
+### How It Works
+
+```
+Lark (Feishu)  →  Hermes Gateway  →  LLM (Claude Sonnet)
+                                          |
+                                   MCP Tools (Lighthouse Backend)
+                                          |
+                                   PostgreSQL databases
+```
+
+### Lighthouse MCP Tools
+
+The agent connects to `lighthouse-backend-api.internal:3000/mcp` and exposes these tools:
+
+| Tool | Purpose |
+|------|---------|
+| `get_agent_context` | Bootstrap: schemas, security rules, strategy |
+| `list_connections` / `get_connection_schema` | Database connection discovery |
+| `query_sql` | Run read-only SQL queries (Postgres) |
+| `render_chart` | Generate PNG charts from query results |
+| `run_report` / `create_report` / `update_report` | Execute and manage saved reports |
+| `create_dashboard` / `add_dashboard_widget` | Build dashboards |
+| `upsert_schedule` / `test_schedule` | Delivery scheduling |
+| `create_calculated_field` | Derived column expressions |
+| `transform_data` | Multi-query JavaScript transformations |
+| `ask_agent` | Delegate complex multi-step analysis |
+
+Full tool docs in [`skills/lighthouse-analytics/SKILL.md`](skills/lighthouse-analytics/SKILL.md).
+
+### Lighthouse Configuration
+
+- **Config**: [`lighthouse-config.yaml`](lighthouse-config.yaml) — copy to `~/.hermes/config.yaml`
+- **Skill**: [`skills/lighthouse-analytics/`](skills/lighthouse-analytics/) — copy to `~/.hermes/skills/`
+- **Model**: `anthropic/claude-sonnet-4-20250514` via OpenRouter
+- **Memory**: Enabled (2200 char limit, periodic nudges)
+- **Compression**: Context compression at 85% using Gemini Flash
+- **Sessions**: Auto-reset after 24h idle or at 4 AM daily
+
+### Deployment (Fly.io)
+
+Deployed as `lighthouse-hermes` on Fly.io (Singapore region, 512MB, 1 shared CPU):
+
+```bash
+# Set secrets
+fly secrets set MCP_AUTH_TOKEN=<token> OPENROUTER_API_KEY=<key> \
+  LARK_APP_ID=<id> LARK_APP_SECRET=<secret> \
+  LARK_VERIFICATION_TOKEN=<token> LARK_ENCRYPT_KEY=<key>
+
+# Deploy
+fly deploy
+```
+
+The [`Dockerfile`](Dockerfile) installs `[lark,mcp,cron]` extras and runs `hermes gateway` via [`entrypoint.sh`](entrypoint.sh), which resolves `${MCP_AUTH_TOKEN}` in the config before startup. Lark webhook listens on port 4000.
+
+### Lighthouse-Specific Files
+
+| File | Purpose |
+|------|---------|
+| `lighthouse-config.yaml` | Agent config (MCP endpoint, model, memory, compression) |
+| `skills/lighthouse-analytics/SKILL.md` | Lighthouse BI skill definition |
+| `Dockerfile` | Container build for Fly.io |
+| `fly.toml` | Fly.io deployment (region, resources, health check) |
+| `entrypoint.sh` | Docker entrypoint (env var resolution + gateway start) |
+| `gateway/platforms/lark.py` | Lark messaging adapter |
+
+---
+
 <table>
 <tr><td><b>A real terminal interface</b></td><td>Full TUI with multiline editing, slash-command autocomplete, conversation history, interrupt-and-redirect, and streaming tool output.</td></tr>
 <tr><td><b>Lives where you do</b></td><td>Telegram, Discord, Slack, WhatsApp, Signal, and CLI — all from a single gateway process. Voice memo transcription, cross-platform conversation continuity.</td></tr>
