@@ -830,7 +830,15 @@ class BasePlatformAdapter(ABC):
         try:
             # Call the handler (this can take a while with tool calls)
             response = await self._message_handler(event)
-            
+
+            # Debug: write chart flow trace to file (Fly.io logs drop print output)
+            _dbg = f"response_type={type(response).__name__}, response_len={len(response) if response else 0}, has_png={'.png' in (response or '')}\n"
+            try:
+                with open("/tmp/chart_debug.log", "a") as _f:
+                    _f.write(f"{_dbg}")
+            except Exception:
+                pass
+
             # Send response if any
             if not response:
                 logger.warning("[%s] Handler returned empty/None response for %s", self.name, event.source.chat_id)
@@ -842,6 +850,15 @@ class BasePlatformAdapter(ABC):
                 images, text_content = self.extract_images(response)
                 if images:
                     logger.info("[%s] extract_images found %d image(s) in response (%d chars)", self.name, len(images), len(response))
+
+                # Debug: trace image extraction
+                try:
+                    with open("/tmp/chart_debug.log", "a") as _f:
+                        _f.write(f"images={len(images)}, text_len={len(text_content)}\n")
+                        if images:
+                            _f.write(f"image_urls={[u for u,_ in images]}\n")
+                except Exception:
+                    pass
                 
                 # Auto-TTS: if voice message, generate audio FIRST (before sending text)
                 # Skipped when the chat has voice mode disabled (/voice off)
