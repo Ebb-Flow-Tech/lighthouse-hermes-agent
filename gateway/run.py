@@ -4402,6 +4402,23 @@ class GatewayRunner:
                         unique_tags.insert(0, "[[audio_as_voice]]")
                     final_response = final_response + "\n" + "\n".join(unique_tags)
             
+            # Inject chart image URLs from tool results if the LLM didn't
+            # include them in the final response.  Same pattern as MEDIA: above.
+            _chart_pattern = re.compile(r'!\[[^\]]*\]\((https?://\S+\.png)\)')
+            if not _chart_pattern.search(final_response):
+                chart_urls = []
+                for msg in result.get("messages", []):
+                    if msg.get("role") in ("tool", "function"):
+                        content = msg.get("content", "")
+                        for m in _chart_pattern.finditer(content):
+                            url = m.group(1)
+                            if url not in chart_urls:
+                                chart_urls.append(url)
+                if chart_urls:
+                    for url in chart_urls:
+                        final_response += f"\n\n![Chart]({url})"
+                    logger.info("Injected %d chart URL(s) from tool results", len(chart_urls))
+
             # Sync session_id: the agent may have created a new session during
             # mid-run context compression (_compress_context splits sessions).
             # If so, update the session store entry so the NEXT message loads

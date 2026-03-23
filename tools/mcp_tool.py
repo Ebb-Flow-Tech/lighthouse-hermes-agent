@@ -83,20 +83,6 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Chart image URL accumulator — gateway reads and clears after each response
-# ---------------------------------------------------------------------------
-_pending_chart_urls: List[str] = []
-
-
-def pop_pending_chart_urls() -> List[str]:
-    """Return and clear any chart image URLs from recent MCP tool calls."""
-    global _pending_chart_urls
-    urls = list(_pending_chart_urls)
-    _pending_chart_urls.clear()
-    return urls
-
-
-# ---------------------------------------------------------------------------
 # Graceful import -- MCP SDK is an optional dependency
 # ---------------------------------------------------------------------------
 
@@ -1022,11 +1008,7 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
             # If the result contains a markdown image (e.g. from render_chart),
             # return as plain text so the LLM naturally includes the image tag
             # in its response, rather than burying it in a JSON wrapper.
-            # Also save the URL as a fallback — the gateway injects it if the
-            # LLM doesn't include the markdown image in its response.
-            chart_match = re.search(r'!\[[^\]]*\]\((https?://\S+\.png)\)', text)
-            if chart_match:
-                _pending_chart_urls.append(chart_match.group(1))
+            if re.search(r'!\[[^\]]*\]\(https?://\S+\.png\)', text):
                 return text
 
             result_obj: dict = {"result": text}
