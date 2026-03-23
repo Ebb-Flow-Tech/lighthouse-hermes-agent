@@ -2008,7 +2008,9 @@ class GatewayRunner:
 
             # If streaming already delivered the response, return None so
             # _process_message_background doesn't send it again.
-            if agent_result.get("already_sent"):
+            _as = agent_result.get("already_sent")
+            print(f"[CHART] already_sent={_as}, response_has_chart={'![' in response and '.png' in response if response else False}, response_len={len(response) if response else 0}")
+            if _as:
                 return None
 
             return response
