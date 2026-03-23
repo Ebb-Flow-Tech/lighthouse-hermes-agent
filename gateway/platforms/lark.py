@@ -184,6 +184,7 @@ class LarkAdapter(BasePlatformAdapter):
         image_url: str,
         caption: Optional[str] = None,
         reply_to: Optional[str] = None,
+        **kwargs,
     ) -> SendResult:
         """Upload image to Lark and send as chart card."""
         image_key = await self._upload_image_from_url(image_url)

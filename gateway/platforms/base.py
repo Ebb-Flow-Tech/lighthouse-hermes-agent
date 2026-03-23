@@ -831,14 +831,6 @@ class BasePlatformAdapter(ABC):
             # Call the handler (this can take a while with tool calls)
             response = await self._message_handler(event)
 
-            # Debug: write chart flow trace to file (Fly.io logs drop print output)
-            _dbg = f"response_type={type(response).__name__}, response_len={len(response) if response else 0}, has_png={'.png' in (response or '')}\n"
-            try:
-                with open("/tmp/chart_debug.log", "a") as _f:
-                    _f.write(f"{_dbg}")
-            except Exception:
-                pass
-
             # Send response if any
             if not response:
                 logger.warning("[%s] Handler returned empty/None response for %s", self.name, event.source.chat_id)
@@ -851,15 +843,6 @@ class BasePlatformAdapter(ABC):
                 if images:
                     logger.info("[%s] extract_images found %d image(s) in response (%d chars)", self.name, len(images), len(response))
 
-                # Debug: trace image extraction
-                try:
-                    with open("/tmp/chart_debug.log", "a") as _f:
-                        _f.write(f"images={len(images)}, text_len={len(text_content)}\n")
-                        if images:
-                            _f.write(f"image_urls={[u for u,_ in images]}\n")
-                except Exception:
-                    pass
-                
                 # Auto-TTS: if voice message, generate audio FIRST (before sending text)
                 # Skipped when the chat has voice mode disabled (/voice off)
                 _tts_path = None
@@ -925,11 +908,6 @@ class BasePlatformAdapter(ABC):
                 # Send extracted images as native attachments
                 if images:
                     logger.info("[%s] Extracted %d image(s) to send as attachments", self.name, len(images))
-                    try:
-                        with open("/tmp/chart_debug.log", "a") as _f:
-                            _f.write(f"sending {len(images)} images\n")
-                    except Exception:
-                        pass
                 for image_url, alt_text in images:
                     if human_delay > 0:
                         await asyncio.sleep(human_delay)
@@ -950,19 +928,9 @@ class BasePlatformAdapter(ABC):
                                 caption=alt_text if alt_text else None,
                                 metadata=_thread_metadata,
                             )
-                        try:
-                            with open("/tmp/chart_debug.log", "a") as _f:
-                                _f.write(f"send_image result: success={img_result.success}, msg_id={img_result.message_id}, error={img_result.error}\n")
-                        except Exception:
-                            pass
                         if not img_result.success:
                             logger.error("[%s] Failed to send image: %s", self.name, img_result.error)
                     except Exception as img_err:
-                        try:
-                            with open("/tmp/chart_debug.log", "a") as _f:
-                                _f.write(f"send_image EXCEPTION: {type(img_err).__name__}: {img_err}\n")
-                        except Exception:
-                            pass
                         logger.error("[%s] Error sending image: %s", self.name, img_err, exc_info=True)
 
                 # Send extracted media files — route by file type
