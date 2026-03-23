@@ -4404,20 +4404,28 @@ class GatewayRunner:
             
             # Inject chart image URLs from tool results if the LLM didn't
             # include them in the final response.  Same pattern as MEDIA: above.
-            _chart_pattern = re.compile(r'!\[[^\]]*\]\((https?://\S+\.png)\)')
-            if not _chart_pattern.search(final_response):
+            _chart_pattern = re.compile(r'!\[.*?\]\((https?://\S+?\.png)\)')
+            _has_chart_in_response = _chart_pattern.search(final_response)
+            print(f"[CHART] final_response has chart: {bool(_has_chart_in_response)}, len={len(final_response)}")
+            if not _has_chart_in_response:
                 chart_urls = []
+                tool_msg_count = 0
                 for msg in result.get("messages", []):
-                    if msg.get("role") in ("tool", "function"):
+                    role = msg.get("role", "")
+                    if role in ("tool", "function"):
+                        tool_msg_count += 1
                         content = msg.get("content", "")
+                        has_png = ".png" in content
+                        print(f"[CHART] tool msg #{tool_msg_count}: role={role}, has_png={has_png}, len={len(content)}, preview={content[:120]}")
                         for m in _chart_pattern.finditer(content):
                             url = m.group(1)
                             if url not in chart_urls:
                                 chart_urls.append(url)
+                print(f"[CHART] Scanned {tool_msg_count} tool messages, found {len(chart_urls)} chart URLs")
                 if chart_urls:
                     for url in chart_urls:
                         final_response += f"\n\n![Chart]({url})"
-                    logger.info("Injected %d chart URL(s) from tool results", len(chart_urls))
+                    print(f"[CHART] Injected {len(chart_urls)} chart URL(s)")
 
             # Sync session_id: the agent may have created a new session during
             # mid-run context compression (_compress_context splits sessions).
