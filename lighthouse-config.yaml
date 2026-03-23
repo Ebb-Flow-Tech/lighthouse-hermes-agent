@@ -124,7 +124,7 @@ delegation:
 # =============================================================================
 display:
   compact: false
-  tool_progress: off
+  tool_progress: "off"
   background_process_notifications: all
   bell_on_complete: false
   show_reasoning: false
