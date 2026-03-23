@@ -844,12 +844,15 @@ class BasePlatformAdapter(ABC):
                 try:
                     from tools.mcp_tool import pop_pending_chart_urls
                     pending_charts = pop_pending_chart_urls()
+                    print(f"[CHART-DEBUG] pop_pending_chart_urls returned {len(pending_charts)} URLs: {pending_charts}")
                     for chart_url in pending_charts:
                         if chart_url not in response:
                             response += f"\n\n![Chart]({chart_url})"
-                            logger.info("[%s] Injected pending chart URL: %s", self.name, chart_url[:80])
-                except ImportError:
-                    pass
+                            print(f"[CHART-DEBUG] Injected chart URL: {chart_url[:80]}")
+                        else:
+                            print(f"[CHART-DEBUG] URL already in response, skipping injection")
+                except Exception as e:
+                    print(f"[CHART-DEBUG] Error in chart URL injection: {type(e).__name__}: {e}")
 
                 # Extract image URLs and send them as native platform attachments
                 images, text_content = self.extract_images(response)
