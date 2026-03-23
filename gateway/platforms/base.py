@@ -837,7 +837,20 @@ class BasePlatformAdapter(ABC):
             if response:
                 # Extract MEDIA:<path> tags (from TTS tool) before other processing
                 media_files, response = self.extract_media(response)
-                
+
+                # Inject any pending chart image URLs from MCP tool calls.
+                # The LLM doesn't always include the markdown image tag from
+                # render_chart results, so we inject them as a fallback.
+                try:
+                    from tools.mcp_tool import pop_pending_chart_urls
+                    pending_charts = pop_pending_chart_urls()
+                    for chart_url in pending_charts:
+                        if chart_url not in response:
+                            response += f"\n\n![Chart]({chart_url})"
+                            logger.info("[%s] Injected pending chart URL: %s", self.name, chart_url[:80])
+                except ImportError:
+                    pass
+
                 # Extract image URLs and send them as native platform attachments
                 images, text_content = self.extract_images(response)
                 if images:
