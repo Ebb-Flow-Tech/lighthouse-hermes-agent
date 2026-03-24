@@ -23,5 +23,6 @@ tinker-atropos/
 mini-swe-agent/
 optional-skills/
 scripts/
+!scripts/whatsapp-bridge/
 .mypy_cache/
 .ruff_cache/
